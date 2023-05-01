@@ -5,8 +5,6 @@ import (
 	"image"
 	"image/color"
 
-	"github.com/miner/game"
-	"github.com/miner/logger"
 	"github.com/oakmound/oak/v4/collision"
 	"github.com/oakmound/oak/v4/event"
 	"github.com/oakmound/oak/v4/mouse"
@@ -37,25 +35,31 @@ func calcOffset(gridSize int, cellSize int) Position {
 	}
 }
 
-func newGameScene(game *game.Miner, log logger.Logger) scene.Scene {
-	err := game.Start()
+func (c *Client) newGameScene() scene.Scene {
+	fmt.Println("new game scene")
+	size := c.size.GridSize()
+	fmt.Println(size, c.difficulty.ToInt())
+	err := c.game.Start(size, c.difficulty.ToInt())
 	if err != nil {
-		log.Error("game", "Start: %v", err)
+		c.log.Error("game", "Start: %v", err)
 	}
-	grid := &Grid{size: game.Size,
-		cellMap: make(map[int]*cellButton, game.Size*game.Size)}
+	grid := &Grid{size: size,
+		cellMap: make(map[int]*cellButton, size*size)}
+	c.grid = grid
 
 	s := scene.Scene{
 		Start: func(ctx *scene.Context) {
-			cellSize := cellSizes[game.Size]
-			offset := calcOffset(game.Size, cellSize)
-			NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1, game)
-			for i := 0; i < game.Size; i++ {
-				for j := 0; j < game.Size; j++ {
+			size := c.size.GridSize()
+			grid := c.grid
+			cellSize := cellSizes[size]
+			offset := calcOffset(size, cellSize)
+			c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
+			fmt.Println("start draw cells, size: ", size)
+			for i := 0; i < size; i++ {
+				for j := 0; j < size; j++ {
 					x := offset.x + float64(i*cellSize)
 					y := offset.y + float64(j*cellSize)
-					cell := game.Grid.GetCell(i, j)
-					grid.cellMap[cell.X()*game.Size+cell.Y()] = newCellButton(ctx, cell.X(), cell.Y(), cell.Count(), float64(x), float64(y), float64(cellSize-1), float64(cellSize-1), cellColor, grey, 3, game, grid)
+					grid.cellMap[i*size+j] = c.newCellButton(ctx, i, j, float64(x), float64(y), float64(cellSize-1), float64(cellSize-1), cellColor, grey, 3)
 
 				}
 			}
@@ -63,7 +67,7 @@ func newGameScene(game *game.Miner, log logger.Logger) scene.Scene {
 	return s
 }
 
-func newCellButton(ctx *scene.Context, ix, iy int, count int, x, y, w, h float64, clr, hclr color.RGBA, layer int, game *game.Miner, grid *Grid) *cellButton {
+func (c *Client) newCellButton(ctx *scene.Context, ix, iy int, x, y, w, h float64, clr, hclr color.RGBA, layer int) *cellButton {
 	hb := &cellButton{
 		button: button{
 			color:      clr,
@@ -72,7 +76,6 @@ func newCellButton(ctx *scene.Context, ix, iy int, count int, x, y, w, h float64
 		x:        ix,
 		y:        iy,
 		Position: Position{x, y},
-		count:    count,
 	}
 	hb.id = ctx.Register(hb)
 	hb.ColorBoxR = render.NewColorBoxR(int(w), int(h), clr)
@@ -87,13 +90,29 @@ func newCellButton(ctx *scene.Context, ix, iy int, count int, x, y, w, h float64
 	render.Draw(hb.ColorBoxR, layer)
 
 	event.Bind(ctx, mouse.ClickOn, hb, func(box *cellButton, me *mouse.Event) event.Response {
+		size := c.size.GridSize()
 		if box.revealed {
 			return 0
 		}
 		box.ColorBoxR.Color = image.NewUniform(color.RGBA{128, 128, 128, 128})
 		me.StopPropagation = true
-		cells, state := game.Reveal(hb.x, hb.y)
+		cells, state, err := c.game.Reveal(hb.x, hb.y)
+		if err != nil {
+			c.log.Error("game", "Reveal: %v", err)
+		}
 		if state == loseState {
+			for _, cell := range cells {
+				cb := c.grid.cellMap[cell.X()*size+cell.Y()]
+				cb.revealed = true
+				if cell.HasBomb() {
+					cb.ColorBoxR.Color = image.NewUniform(red)
+					continue
+				}
+				cb.ColorBoxR.Color = image.NewUniform(grey)
+				if cell.Count() > 0 {
+					render.Draw(render.NewText(fmt.Sprintf("%d", cell.Count()), cb.Position.x+float64(cellSizes[size]/2), cb.Position.y+float64(cellSizes[size]/2)))
+				}
+			}
 			ctx.Window.GoToScene(loseState)
 			return 0
 		}
@@ -102,11 +121,11 @@ func newCellButton(ctx *scene.Context, ix, iy int, count int, x, y, w, h float64
 			return 0
 		} else {
 			for _, cell := range cells {
-				cb := grid.cellMap[cell.X()*game.Size+cell.Y()]
+				cb := c.grid.cellMap[cell.X()*size+cell.Y()]
 				cb.revealed = true
 				cb.ColorBoxR.Color = image.NewUniform(black)
-				if cb.count > 0 {
-					render.Draw(render.NewText(fmt.Sprintf("%d", cb.count), cb.Position.x+float64(cellSizes[game.Size]/2)-2, cb.Position.y+float64(cellSizes[game.Size]/2)-2))
+				if cell.Count() > 0 {
+					render.Draw(render.NewText(fmt.Sprintf("%d", cell.Count()), cb.Position.x+float64(cellSizes[size]/2), cb.Position.y+float64(cellSizes[size]/2)))
 				}
 			}
 		}

@@ -5,8 +5,6 @@ import (
 	"image/color"
 
 	"github.com/miner/game"
-	"github.com/miner/logger"
-	"github.com/oakmound/oak/v4"
 	"github.com/oakmound/oak/v4/collision"
 	"github.com/oakmound/oak/v4/event"
 	"github.com/oakmound/oak/v4/mouse"
@@ -16,6 +14,9 @@ import (
 
 type Size string
 
+func (s Size) undefined() bool {
+	return s == ""
+}
 func (s Size) String() string {
 	return string(s)
 }
@@ -25,6 +26,10 @@ func (s Size) GridSize() int {
 }
 
 type Difficulty string
+
+func (d Difficulty) undefined() bool {
+	return d == ""
+}
 
 func (d Difficulty) String() string {
 	return string(d)
@@ -73,7 +78,7 @@ var (
 	fontColor = color.RGBA{255, 255, 255, 1}
 )
 
-func NewBackButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int, g *game.Miner) {
+func (c *Client) NewBackButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int) {
 	sb := &backButton{}
 	sb.id = ctx.Register(sb)
 	sb.ColorBoxR = render.NewColorBoxR(int(s.width), int(s.height), color)
@@ -89,7 +94,6 @@ func NewBackButton(ctx *scene.Context, p Position, s Shape, color, hoverColor co
 
 	event.Bind(ctx, mouse.ClickOn, sb, func(sb *backButton, me *mouse.Event) event.Response {
 		me.StopPropagation = true
-		g.Reset()
 		ctx.Window.GoToScene("settings")
 		return 0
 	})
@@ -112,7 +116,7 @@ type Shape struct {
 	width, height float64
 }
 
-func newSizeButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int, size Size, m map[Size]*sizeButton, g *game.Miner, font *render.Font) {
+func (c *Client) newSizeButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int, size Size, m map[Size]*sizeButton) {
 	var text render.Renderable
 	sb := &sizeButton{
 		size:        size,
@@ -136,7 +140,7 @@ func newSizeButton(ctx *scene.Context, p Position, s Shape, color, hoverColor co
 		}
 		sb.ShiftX(-20)
 		sb.selected = true
-		g.Size = size.GridSize()
+		c.size = size
 		for s, button := range sb.sizeButtons {
 			if s != sb.size {
 				if button.selected {
@@ -150,7 +154,7 @@ func newSizeButton(ctx *scene.Context, p Position, s Shape, color, hoverColor co
 	event.Bind(ctx, mouse.Start, sb, func(sb *sizeButton, me *mouse.Event) event.Response {
 		sb.ColorBoxR.Color = image.NewUniform(hoverColor)
 		me.StopPropagation = true
-		text, _ = render.Draw(font.NewText(size.String(), p.x+s.width/2-20, p.y+s.height/2-10))
+		text, _ = render.Draw(c.font.NewText(size.String(), p.x+s.width/2-20, p.y+s.height/2-10))
 		return 0
 	})
 	event.Bind(ctx, mouse.Stop, sb, func(sb *sizeButton, me *mouse.Event) event.Response {
@@ -161,7 +165,7 @@ func newSizeButton(ctx *scene.Context, p Position, s Shape, color, hoverColor co
 	})
 }
 
-func newStartButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int, game *game.Miner, font *render.Font) {
+func (c *Client) newStartButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int) {
 	var text render.Renderable
 	hb := &startButton{
 		button{color: color, hoverColor: hoverColor},
@@ -177,7 +181,7 @@ func newStartButton(ctx *scene.Context, p Position, s Shape, color, hoverColor c
 
 	event.Bind(ctx, mouse.ClickOn, hb, func(box *startButton, me *mouse.Event) event.Response {
 		me.StopPropagation = true
-		if game.Difficulty == 0 || game.Size == 0 {
+		if c.difficulty.undefined() || c.size.undefined() {
 			ctx.Window.GoToScene("error")
 			return 0
 		}
@@ -187,7 +191,7 @@ func newStartButton(ctx *scene.Context, p Position, s Shape, color, hoverColor c
 	event.Bind(ctx, mouse.Start, hb, func(box *startButton, me *mouse.Event) event.Response {
 		box.ColorBoxR.Color = image.NewUniform(hoverColor)
 		me.StopPropagation = true
-		text, _ = render.Draw(font.NewText("Start", p.x+s.width/2-20, p.y+s.height/2-10))
+		text, _ = render.Draw(c.font.NewText("Start", p.x+s.width/2-20, p.y+s.height/2-10))
 		return 0
 	})
 	event.Bind(ctx, mouse.Stop, hb, func(box *startButton, me *mouse.Event) event.Response {
@@ -198,7 +202,7 @@ func newStartButton(ctx *scene.Context, p Position, s Shape, color, hoverColor c
 	})
 }
 
-func newDifficultyButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int, diff Difficulty, m map[Difficulty]*difficultyButton, g *game.Miner, font *render.Font) {
+func (c *Client) newDifficultyButton(ctx *scene.Context, p Position, s Shape, color, hoverColor color.RGBA, layer int, diff Difficulty, m map[Difficulty]*difficultyButton) {
 	var text render.Renderable
 	sb := &difficultyButton{
 		button: button{
@@ -229,7 +233,7 @@ func newDifficultyButton(ctx *scene.Context, p Position, s Shape, color, hoverCo
 		}
 		sb.ShiftX(20)
 		sb.selected = true
-		g.Difficulty = diff.ToInt()
+		c.difficulty = diff
 		for d, button := range sb.difficultyButtons {
 			if d != sb.difficulty {
 				if button.selected {
@@ -243,7 +247,7 @@ func newDifficultyButton(ctx *scene.Context, p Position, s Shape, color, hoverCo
 	event.Bind(ctx, mouse.Start, sb, func(sb *difficultyButton, me *mouse.Event) event.Response {
 		sb.ColorBoxR.Color = image.NewUniform(sb.hoverColor)
 		me.StopPropagation = true
-		text, _ = render.Draw(font.NewText(diff.String(), p.x+s.width/2-20, p.y+s.height/2-10))
+		text, _ = render.Draw(c.font.NewText(diff.String(), p.x+s.width/2-20, p.y+s.height/2-10))
 		return 0
 	})
 	event.Bind(ctx, mouse.Stop, sb, func(sb *difficultyButton, me *mouse.Event) event.Response {
@@ -255,44 +259,47 @@ func newDifficultyButton(ctx *scene.Context, p Position, s Shape, color, hoverCo
 	})
 }
 
-func NewSettingsScene(game *game.Miner, font *render.Font, log logger.Logger) scene.Scene {
+func (c *Client) NewErrorScene() scene.Scene {
+	return scene.Scene{Start: func(ctx *scene.Context) {
+		ctx.DrawStack.Draw(c.font.NewText("Bad input! Any key to return to title", 210, 240))
+		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
+	}}
+
+}
+
+func (c *Client) NewWinScene() scene.Scene {
+	return scene.Scene{Start: func(ctx *scene.Context) {
+		ctx.DrawStack.Draw(c.font.NewText("CONGRATULATIONS!", 250, 240))
+		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
+	}}
+}
+
+func (c *Client) NewLoseScene() scene.Scene {
+	return scene.Scene{Start: func(ctx *scene.Context) {
+		ctx.DrawStack.Draw(c.font.NewText("YOU LOSE!", 250, 240))
+		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
+	}}
+}
+
+func (c *Client) newSettingScene() scene.Scene {
 	return scene.Scene{
 		Start: func(ctx *scene.Context) {
 			s := Shape{200, 50}
-			newSizeButton(ctx, Position{119, 50}, s, green, grey, 1, sizeSmall, sizeButtons, game, font)
-			newSizeButton(ctx, Position{119, 102}, s, yellow, grey, 1, sizeMedium, sizeButtons, game, font)
-			newSizeButton(ctx, Position{119, 154}, s, red, grey, 1, sizeLarge, sizeButtons, game, font)
+			c.newSizeButton(ctx, Position{119, 50}, s, green, grey, 1, sizeSmall, sizeButtons)
+			c.newSizeButton(ctx, Position{119, 102}, s, yellow, grey, 1, sizeMedium, sizeButtons)
+			c.newSizeButton(ctx, Position{119, 154}, s, red, grey, 1, sizeLarge, sizeButtons)
 
-			newDifficultyButton(ctx, Position{321, 50}, s, green, grey, 1, difficultyEasy, difficultyButtons, game, font)
-			newDifficultyButton(ctx, Position{321, 102}, s, yellow, grey, 1, difficultyNormal, difficultyButtons, game, font)
-			newDifficultyButton(ctx, Position{321, 154}, s, red, grey, 1, difficultyHard, difficultyButtons, game, font)
+			c.newDifficultyButton(ctx, Position{321, 50}, s, green, grey, 1, difficultyEasy, difficultyButtons)
+			c.newDifficultyButton(ctx, Position{321, 102}, s, yellow, grey, 1, difficultyNormal, difficultyButtons)
+			c.newDifficultyButton(ctx, Position{321, 154}, s, red, grey, 1, difficultyHard, difficultyButtons)
 
-			newStartButton(ctx, Position{119, 206}, Shape{402, 50}, cyan, grey, 1, game, font)
+			c.newStartButton(ctx, Position{119, 206}, Shape{402, 50}, cyan, grey, 1)
 		},
 		End: func() (string, *scene.Result) {
-			oak.AddScene("game", newGameScene(game, log))
+			g := game.NewGame()
+			c.game = g
+			c.window.AddScene("game", c.newGameScene())
 			return "game", nil //set the next scene to "game"
 		},
 	}
-}
-
-func NewErrorScene(g *game.Miner, font *render.Font, log logger.Logger) scene.Scene {
-	return scene.Scene{Start: func(ctx *scene.Context) {
-		ctx.DrawStack.Draw(font.NewText("Bad input! Any key to return to title", 210, 240))
-		NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1, g)
-	}}
-
-}
-
-func NewWinScene(g *game.Miner, font *render.Font, log logger.Logger) scene.Scene {
-	return scene.Scene{Start: func(ctx *scene.Context) {
-		ctx.DrawStack.Draw(font.NewText("CONGRATULATIONS!", 250, 240))
-		NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1, g)
-	}}
-}
-func NewLoseScene(g *game.Miner, font *render.Font, log logger.Logger) scene.Scene {
-	return scene.Scene{Start: func(ctx *scene.Context) {
-		ctx.DrawStack.Draw(font.NewText("YOU LOSE!", 250, 240))
-		NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1, g)
-	}}
 }

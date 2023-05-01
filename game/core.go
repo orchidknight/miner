@@ -28,10 +28,18 @@ func (g *Miner) SetSize(s int) error {
 	return nil
 }
 
-func (g *Miner) Reveal(x, y int) ([]Cell, string) {
+func (g *Miner) cells() []Cell {
+	all := make([]Cell, 0, g.Size*g.Size)
+	for _, cells := range g.Grid.cells {
+		all = append(all, cells...)
+	}
+	return all
+}
+
+func (g *Miner) Reveal(x, y int) ([]Cell, GameState, error) {
 	revealedCells := make([]Cell, 0)
 	if g.Grid.GetCell(x, y).HasBomb() {
-		return nil, "lose"
+		return g.cells(), Lose, nil
 	}
 	revealed := make(map[int]Position)
 	g.check(x, y, revealed)
@@ -40,22 +48,16 @@ func (g *Miner) Reveal(x, y int) ([]Cell, string) {
 		g.Grid.revealed[k] = p
 	}
 	if g.Size*g.Size-len(g.Grid.revealed) == g.BombsCount {
-		return revealedCells, "win"
+		return revealedCells, Win, nil
 	}
-	return revealedCells, ""
-}
-func (g *Miner) Reset() {
-	g.Size = 0
-	g.Difficulty = 0
-	g.Bombs = make(map[int]Position)
-	g.Grid = nil
-	g.RevealedCount = 0
+	return revealedCells, InProgress, nil
 }
 
-func (g *Miner) Start() error {
-	if g.Size <= 0 || g.Difficulty <= 0 {
+func (g *Miner) Start(size, difficulty int) error {
+	if size <= 0 || difficulty <= 0 {
 		return fmt.Errorf("wrong game settings")
 	}
+	g.Size, g.Difficulty = size, difficulty
 	g.BombsCount = (g.Size * g.Size * g.Difficulty) / 100
 	rand.Seed(time.Now().UnixNano())
 	for i := 0; i < g.BombsCount; i++ {

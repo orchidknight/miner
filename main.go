@@ -7,5 +7,9 @@ import (
 
 func main() {
 	log := logger.NewLog()
-	ui.Run(log)
+	client := ui.NewClient(log)
+	err := client.Run()
+	if err != nil {
+		log.Fatal("client", "Run : %v", err)
+	}
 }
