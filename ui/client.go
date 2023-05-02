@@ -42,14 +42,6 @@ func (c *Client) Run() error {
 	if err != nil {
 		return err
 	}
-	err = c.window.AddScene("lose", c.NewLoseScene())
-	if err != nil {
-		return err
-	}
-	err = c.window.AddScene("win", c.NewWinScene())
-	if err != nil {
-		return err
-	}
 	err = c.window.Init("settings")
 	if err != nil {
 		return err

@@ -1,10 +1,13 @@
 package game
 
 import (
-	"fmt"
+	"errors"
 	"math/rand"
 	"time"
 )
+
+var ErrInvalidPosition = errors.New("invalid x y position")
+var ErrInvalidSettings = errors.New("invalid size or difficulty")
 
 type Miner struct {
 	Size          int
@@ -20,13 +23,6 @@ func NewGame() *Miner {
 		Bombs: make(map[int]Position),
 	}
 }
-func (g *Miner) SetSize(s int) error {
-	if s <= 0 {
-		return fmt.Errorf("wrong size")
-	}
-	g.Size = s
-	return nil
-}
 
 func (g *Miner) cells() []Cell {
 	all := make([]Cell, 0, g.Size*g.Size)
@@ -37,14 +33,17 @@ func (g *Miner) cells() []Cell {
 }
 
 func (g *Miner) Reveal(x, y int) ([]Cell, GameState, error) {
+	if !g.Grid.validatedPosition(x, y) {
+		return nil, InProgress, ErrInvalidPosition
+	}
 	revealedCells := make([]Cell, 0)
-	if g.Grid.GetCell(x, y).HasBomb() {
+	if g.Grid.getCell(x, y).HasBomb() {
 		return g.cells(), Lose, nil
 	}
 	revealed := make(map[int]Position)
 	g.check(x, y, revealed)
 	for k, p := range revealed {
-		revealedCells = append(revealedCells, g.Grid.GetCell(p.x, p.y))
+		revealedCells = append(revealedCells, g.Grid.getCell(p.x, p.y))
 		g.Grid.revealed[k] = p
 	}
 	if g.Size*g.Size-len(g.Grid.revealed) == g.BombsCount {
@@ -55,7 +54,7 @@ func (g *Miner) Reveal(x, y int) ([]Cell, GameState, error) {
 
 func (g *Miner) Start(size, difficulty int) error {
 	if size <= 0 || difficulty <= 0 {
-		return fmt.Errorf("wrong game settings")
+		return ErrInvalidSettings
 	}
 	g.Size, g.Difficulty = size, difficulty
 	g.BombsCount = (g.Size * g.Size * g.Difficulty) / 100
@@ -113,7 +112,7 @@ type Grid struct {
 	revealed map[int]Position
 }
 
-func (g *Grid) GetCell(x, y int) Cell {
+func (g *Grid) getCell(x, y int) Cell {
 	return g.cells[x][y]
 }
 
@@ -186,7 +185,7 @@ func (g *Grid) nearCells(x, y int) []int {
 }
 
 func (g *Miner) check(x, y int, revealed map[int]Position) {
-	cell := g.Grid.GetCell(x, y)
+	cell := g.Grid.getCell(x, y)
 	revealed[x*g.Size+y] = Position{x, y}
 	if cell.count > 0 {
 		return

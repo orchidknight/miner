@@ -94,6 +94,9 @@ func (c *Client) NewBackButton(ctx *scene.Context, p Position, s Shape, color, h
 
 	event.Bind(ctx, mouse.ClickOn, sb, func(sb *backButton, me *mouse.Event) event.Response {
 		me.StopPropagation = true
+		c.size = ""
+		c.difficulty = ""
+		c.grid = nil
 		ctx.Window.GoToScene("settings")
 		return 0
 	})
@@ -261,25 +264,25 @@ func (c *Client) newDifficultyButton(ctx *scene.Context, p Position, s Shape, co
 
 func (c *Client) NewErrorScene() scene.Scene {
 	return scene.Scene{Start: func(ctx *scene.Context) {
-		ctx.DrawStack.Draw(c.font.NewText("Bad input! Any key to return to title", 210, 240))
+		ctx.DrawStack.Draw(c.font.NewText("Bad input!", 210, 240))
 		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
 	}}
 
 }
 
-func (c *Client) NewWinScene() scene.Scene {
-	return scene.Scene{Start: func(ctx *scene.Context) {
-		ctx.DrawStack.Draw(c.font.NewText("CONGRATULATIONS!", 250, 240))
-		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
-	}}
-}
+//func (c *Client) NewWinScene() scene.Scene {
+//	return scene.Scene{Start: func(ctx *scene.Context) {
+//		ctx.DrawStack.Draw(c.font.NewText("CONGRATULATIONS!", 250, 240))
+//		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
+//	}}
+//}
 
-func (c *Client) NewLoseScene() scene.Scene {
-	return scene.Scene{Start: func(ctx *scene.Context) {
-		ctx.DrawStack.Draw(c.font.NewText("YOU LOSE!", 250, 240))
-		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
-	}}
-}
+//func (c *Client) NewLoseScene() scene.Scene {
+//	return scene.Scene{Start: func(ctx *scene.Context) {
+//		ctx.DrawStack.Draw(c.font.NewText("YOU LOSE!", 250, 240))
+//		c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
+//	}}
+//}
 
 func (c *Client) newSettingScene() scene.Scene {
 	return scene.Scene{

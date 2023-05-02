@@ -54,7 +54,6 @@ func (c *Client) newGameScene() scene.Scene {
 			cellSize := cellSizes[size]
 			offset := calcOffset(size, cellSize)
 			c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
-			fmt.Println("start draw cells, size: ", size)
 			for i := 0; i < size; i++ {
 				for j := 0; j < size; j++ {
 					x := offset.x + float64(i*cellSize)
@@ -110,14 +109,26 @@ func (c *Client) newCellButton(ctx *scene.Context, ix, iy int, x, y, w, h float6
 				}
 				cb.ColorBoxR.Color = image.NewUniform(grey)
 				if cell.Count() > 0 {
-					render.Draw(render.NewText(fmt.Sprintf("%d", cell.Count()), cb.Position.x+float64(cellSizes[size]/2), cb.Position.y+float64(cellSizes[size]/2)))
+					render.Draw(render.NewText(fmt.Sprintf("%d", cell.Count()), cb.Position.x+float64(cellSizes[size]/2-5), cb.Position.y+float64(cellSizes[size]/2-9)))
 				}
 			}
-			ctx.Window.GoToScene(loseState)
+			ctx.DrawStack.Draw(c.font.NewText("YOU LOSE!", 250, 15))
 			return 0
 		}
 		if state == winState {
-			ctx.Window.GoToScene(winState)
+			for _, cell := range cells {
+				cb := c.grid.cellMap[cell.X()*size+cell.Y()]
+				cb.revealed = true
+				if cell.HasBomb() {
+					cb.ColorBoxR.Color = image.NewUniform(red)
+					continue
+				}
+				cb.ColorBoxR.Color = image.NewUniform(grey)
+				if cell.Count() > 0 {
+					render.Draw(render.NewText(fmt.Sprintf("%d", cell.Count()), cb.Position.x+float64(cellSizes[size]/2), cb.Position.y+float64(cellSizes[size]/2)))
+				}
+			}
+			ctx.DrawStack.Draw(c.font.NewText("CONGRATULATIONS!", 250, 15))
 			return 0
 		} else {
 			for _, cell := range cells {
@@ -125,7 +136,7 @@ func (c *Client) newCellButton(ctx *scene.Context, ix, iy int, x, y, w, h float6
 				cb.revealed = true
 				cb.ColorBoxR.Color = image.NewUniform(black)
 				if cell.Count() > 0 {
-					render.Draw(render.NewText(fmt.Sprintf("%d", cell.Count()), cb.Position.x+float64(cellSizes[size]/2), cb.Position.y+float64(cellSizes[size]/2)))
+					render.Draw(render.NewText(fmt.Sprintf("%d", cell.Count()), cb.Position.x+float64(cellSizes[size]/2-5), cb.Position.y+float64(cellSizes[size]/2-9)))
 				}
 			}
 		}
