@@ -56,17 +56,22 @@ func (c *Client) newGameScene() scene.Scene {
 			c.NewBackButton(ctx, Position{0, 0}, Shape{20, 480}, cyan, grey, 1)
 			for i := 0; i < size; i++ {
 				for j := 0; j < size; j++ {
-					x := offset.x + float64(i*cellSize)
-					y := offset.y + float64(j*cellSize)
-					grid.cellMap[i*size+j] = c.newCellButton(ctx, i, j, float64(x), float64(y), float64(cellSize-1), float64(cellSize-1), cellColor, grey, 3)
-
+					p := Position{
+						offset.x + float64(i*cellSize),
+						offset.y + float64(j*cellSize),
+					}
+					s := Shape{
+						float64(cellSize - 1),
+						float64(cellSize - 1),
+					}
+					grid.cellMap[i*size+j] = c.newCellButton(ctx, i, j, p, s, cellColor, grey, 3)
 				}
 			}
 		}}
 	return s
 }
 
-func (c *Client) newCellButton(ctx *scene.Context, ix, iy int, x, y, w, h float64, clr, hclr color.RGBA, layer int) *cellButton {
+func (c *Client) newCellButton(ctx *scene.Context, ix, iy int, p Position, s Shape, clr, hclr color.RGBA, layer int) *cellButton {
 	hb := &cellButton{
 		button: button{
 			color:      clr,
@@ -74,13 +79,13 @@ func (c *Client) newCellButton(ctx *scene.Context, ix, iy int, x, y, w, h float6
 		},
 		x:        ix,
 		y:        iy,
-		Position: Position{x, y},
+		Position: Position{p.x, p.y},
 	}
 	hb.id = ctx.Register(hb)
-	hb.ColorBoxR = render.NewColorBoxR(int(w), int(h), clr)
-	hb.ColorBoxR.SetPos(x, y)
+	hb.ColorBoxR = render.NewColorBoxR(int(s.width), int(s.height), clr)
+	hb.ColorBoxR.SetPos(p.x, p.y)
 
-	sp := collision.NewSpace(x, y, w, h, hb.id)
+	sp := collision.NewSpace(p.x, p.y, s.width, s.height, hb.id)
 	sp.SetZLayer(float64(layer))
 
 	mouse.Add(sp)

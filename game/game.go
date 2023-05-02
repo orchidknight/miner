@@ -32,6 +32,10 @@ func (g *Miner) cells() []Cell {
 	return all
 }
 
+// Reveal checks the given cell with incoming coordinates
+// If bomb - returns all cells for revealing, game state - lose.
+// If cell is empty, recursively collects all adjacent empty cells to reveal, game state is in progress. Recursive cell traversal ends if cell bomb count is greater than 0
+// If all possible cells are revealed, the game state is win, returns all cells to be revealed.
 func (g *Miner) Reveal(x, y int) ([]Cell, GameState, error) {
 	if !g.Grid.validatedPosition(x, y) {
 		return nil, InProgress, ErrInvalidPosition
@@ -52,6 +56,7 @@ func (g *Miner) Reveal(x, y int) ([]Cell, GameState, error) {
 	return revealedCells, InProgress, nil
 }
 
+// Start initiate the game with the given settings. Cannot be created if the settings are null. Cell matrix with uniform distribution is created
 func (g *Miner) Start(size, difficulty int) error {
 	if size <= 0 || difficulty <= 0 {
 		return ErrInvalidSettings
